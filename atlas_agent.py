@@ -48,10 +48,10 @@ TOKEN_FILE       = BASE_DIR / "token.json"
 FRONTEND_FILE    = BASE_DIR / "atlas_workspace.html"
 
 # ── Config ─────────────────────────────────────────────────────────────────────
-RAG_MODEL        = os.getenv("RAG_MODEL",        "qwen2.5-coder:7b")
-BRIEFING_MODEL   = os.getenv("BRIEFING_MODEL",   "qwen2.5:14b")
+RAG_MODEL        = os.getenv("RAG_MODEL",        "gemma3:4b")
+BRIEFING_MODEL   = os.getenv("BRIEFING_MODEL",   "gemma3:4b")
 EMBED_MODEL      = os.getenv("EMBED_MODEL",      "nomic-embed-text")
-RERANK_MODEL     = os.getenv("RERANK_MODEL",     "qwen3-reranker")
+RERANK_MODEL     = os.getenv("RERANK_MODEL",     "gemma3:4b")
 CHROMA_COLLECTION= os.getenv("CHROMA_COLLECTION","workspace_memory")
 OLLAMA_HOST      = os.getenv("OLLAMA_HOST",      "http://localhost:11434")
 BM25_TOP_K       = int(os.getenv("BM25_TOP_K",   "20"))
