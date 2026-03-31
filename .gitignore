@@ -1,0 +1,24 @@
+.env
+credentials.json
+token.json
+chroma_db/
+__pycache__/
+.venv/
+venv/
+*.pyc
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Claude Code
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db

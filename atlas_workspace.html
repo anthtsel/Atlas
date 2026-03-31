@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATLAS Workspace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@300;400;500;600&family=Cabinet+Grotesk:wght@400;500;700;800&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<style>
+:root {
+  --bg:       #0d0f0e;
+  --bg2:      #131614;
+  --bg3:      #181c1a;
+  --bg4:      #1e2420;
+  --border:   #252d29;
+  --border2:  #2e3832;
+  --green:    #4ade80;
+  --green-d:  #166534;
+  --green-g:  rgba(74,222,128,0.08);
+  --teal:     #2dd4bf;
+  --amber:    #fbbf24;
+  --red:      #f87171;
+  --blue:     #60a5fa;
+  --purple:   #c084fc;
+  --text:     #b8c4be;
+  --text-dim: #4a5a52;
+  --text-hi:  #e8f0ea;
+  --mono:     'Azeret Mono', monospace;
+  --sans:     'Cabinet Grotesk', sans-serif;
+  --serif:    'DM Serif Display', serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12.5px;display:flex;flex-direction:column;}
+
+/* ── Top bar ── */
+.topbar{height:46px;min-height:46px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 18px;flex-shrink:0;}
+.topbar-left{display:flex;align-items:center;gap:14px;}
+.logo{font-family:var(--serif);font-size:20px;color:var(--green);line-height:1;}
+.logo em{font-style:italic;font-size:11px;color:var(--text-dim);margin-left:6px;font-family:var(--mono);letter-spacing:0.15em;vertical-align:middle;}
+.pills{display:flex;gap:6px;}
+.pill{display:flex;align-items:center;gap:4px;padding:2px 8px;border-radius:2px;font-size:9.5px;letter-spacing:0.07em;border:1px solid var(--border);color:var(--text-dim);background:var(--bg3);transition:all 0.3s;}
+.pill .dot{width:5px;height:5px;border-radius:50%;background:currentColor;opacity:0.4;}
+.pill.online{border-color:rgba(74,222,128,0.3);color:var(--green);}
+.pill.online .dot{opacity:1;box-shadow:0 0 5px var(--green);}
+.pill.warn{border-color:rgba(251,191,36,0.3);color:var(--amber);}
+.pill.warn .dot{opacity:1;}
+.pill.err{border-color:rgba(248,113,113,0.3);color:var(--red);}
+.pill.err .dot{opacity:1;}
+.topbar-right{display:flex;align-items:center;gap:14px;font-size:10px;color:var(--text-dim);}
+.doc-count{color:var(--green);}
+#clock{font-variant-numeric:tabular-nums;}
+
+/* ── Layout ── */
+.workspace{flex:1;display:grid;grid-template-columns:1fr 300px;grid-template-rows:1fr 200px;overflow:hidden;gap:1px;background:var(--border);}
+.panel{background:var(--bg);display:flex;flex-direction:column;overflow:hidden;}
+.panel-header{height:32px;min-height:32px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 14px;flex-shrink:0;}
+.panel-title{font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-dim);display:flex;align-items:center;gap:7px;}
+.panel-title .acc{color:var(--green);}
+.panel-actions{display:flex;gap:5px;}
+.p-btn{background:transparent;border:1px solid var(--border);color:var(--text-dim);font-family:var(--mono);font-size:9px;padding:2px 8px;cursor:pointer;border-radius:2px;letter-spacing:0.07em;text-transform:uppercase;transition:all 0.15s;}
+.p-btn:hover{border-color:rgba(74,222,128,0.4);color:var(--green);}
+.p-btn.active{background:var(--green-g);border-color:rgba(74,222,128,0.4);color:var(--green);}
+
+/* ── Chat ── */
+.chat-panel{grid-row:1;grid-column:1;}
+.chat-msgs{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:18px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+
+.welcome{margin:auto;text-align:center;padding:32px;animation:fadeIn 0.7s ease;}
+.welcome-glyph{font-family:var(--serif);font-size:52px;color:var(--green);opacity:0.12;line-height:1;margin-bottom:14px;}
+.welcome h2{font-family:var(--serif);font-size:24px;font-style:italic;color:var(--text-hi);margin-bottom:8px;}
+.welcome p{color:var(--text-dim);font-size:11.5px;line-height:1.8;max-width:360px;margin:0 auto 18px;}
+.hint-chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;}
+.hint{background:var(--bg3);border:1px solid var(--border);padding:5px 12px;border-radius:2px;font-size:10.5px;color:var(--text-dim);cursor:pointer;transition:all 0.15s;font-family:var(--mono);}
+.hint:hover{border-color:rgba(74,222,128,0.35);color:var(--green);background:var(--green-g);}
+
+.message{display:flex;flex-direction:column;gap:5px;animation:slideUp 0.22s ease;}
+.message.user{align-items:flex-end;}
+.message.agent{align-items:flex-start;}
+.msg-label{font-size:9px;letter-spacing:0.13em;text-transform:uppercase;color:var(--text-dim);display:flex;align-items:center;gap:6px;}
+.msg-bubble{max-width:82%;padding:11px 15px;border-radius:2px;line-height:1.7;}
+.message.user .msg-bubble{background:var(--bg4);border:1px solid var(--border2);color:var(--text-hi);font-family:var(--mono);font-size:12.5px;}
+.message.agent .msg-bubble{background:var(--bg2);border:1px solid var(--border);border-left:2px solid var(--green-d);color:var(--text);font-family:var(--sans);font-size:13px;font-weight:400;}
+.message.agent .msg-bubble h1,.message.agent .msg-bubble h2,.message.agent .msg-bubble h3{font-family:var(--serif);color:var(--text-hi);margin:12px 0 6px;}
+.message.agent .msg-bubble h2{font-size:16px;}
+.message.agent .msg-bubble h3{font-size:14px;}
+.message.agent .msg-bubble ul,.message.agent .msg-bubble ol{padding-left:18px;margin:6px 0;}
+.message.agent .msg-bubble li{margin-bottom:3px;}
+.message.agent .msg-bubble table{border-collapse:collapse;width:100%;margin:8px 0;font-size:12px;}
+.message.agent .msg-bubble th{background:var(--bg3);color:var(--green);padding:5px 10px;border:1px solid var(--border);text-align:left;font-family:var(--mono);font-size:10px;letter-spacing:0.08em;}
+.message.agent .msg-bubble td{padding:5px 10px;border:1px solid var(--border);color:var(--text);}
+.message.agent .msg-bubble code{background:var(--bg3);padding:1px 5px;border-radius:2px;font-family:var(--mono);font-size:11px;color:var(--teal);}
+.message.agent .msg-bubble pre{background:var(--bg3);padding:10px;border-radius:3px;overflow-x:auto;margin:8px 0;}
+.message.agent .msg-bubble pre code{background:none;padding:0;}
+.message.agent .msg-bubble strong{color:var(--text-hi);}
+.msg-meta{font-size:9px;color:var(--text-dim);display:flex;gap:10px;}
+.msg-meta .chunks{color:rgba(74,222,128,0.5);}
+
+/* ── Thought trace ── */
+.thought-trace{max-width:82%;border:1px solid var(--border);border-radius:2px;overflow:hidden;margin-top:2px;}
+.trace-header{background:var(--bg3);padding:7px 12px;font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none;}
+.trace-header:hover{background:var(--bg4);}
+.trace-body{max-height:0;overflow:hidden;transition:max-height 0.3s ease;}
+.trace-body.open{max-height:300px;}
+.trace-step{display:flex;align-items:flex-start;gap:10px;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.03);font-size:10.5px;}
+.trace-step:last-child{border-bottom:none;}
+.trace-num{display:flex;align-items:center;justify-content:center;width:18px;height:18px;min-width:18px;border-radius:3px;font-size:9px;font-weight:600;flex-shrink:0;margin-top:1px;}
+.trace-num.bm25{background:rgba(251,191,36,0.15);color:var(--amber);}
+.trace-num.vec{background:rgba(96,165,250,0.15);color:var(--blue);}
+.trace-num.rank{background:rgba(192,132,252,0.15);color:var(--purple);}
+.trace-content{flex:1;}
+.trace-label{color:var(--text-hi);margin-bottom:2px;}
+.trace-detail{color:var(--text-dim);font-size:9.5px;}
+
+/* ── Thinking ── */
+.thinking{display:flex;align-items:center;gap:8px;padding:11px 15px;background:var(--bg2);border:1px solid var(--border);border-left:2px solid var(--green-d);border-radius:2px;max-width:82%;}
+.dots{display:flex;gap:3px;}
+.dots span{width:4px;height:4px;border-radius:50%;background:var(--green);animation:pulse 1.2s ease infinite;}
+.dots span:nth-child(2){animation-delay:0.2s;}
+.dots span:nth-child(3){animation-delay:0.4s;}
+.thinking-label{font-size:10px;color:var(--green-d);}
+
+/* ── Action confirmation card ── */
+.action-card{max-width:82%;background:var(--bg2);border:1px solid rgba(251,191,36,0.3);border-radius:4px;overflow:hidden;animation:slideUp 0.22s ease;}
+.action-card-header{background:rgba(251,191,36,0.08);padding:10px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(251,191,36,0.15);}
+.action-card-icon{font-size:14px;}
+.action-card-title{font-family:var(--sans);font-size:13px;font-weight:700;color:var(--amber);}
+.action-card-body{padding:12px 14px;font-size:12px;color:var(--text);line-height:1.7;}
+.action-card-body .field{display:flex;gap:8px;margin-bottom:4px;}
+.action-card-body .field-key{color:var(--text-dim);width:80px;flex-shrink:0;}
+.action-card-body .field-val{color:var(--text-hi);}
+.action-card-footer{display:flex;gap:8px;padding:10px 14px;border-top:1px solid rgba(255,255,255,0.04);}
+.confirm-btn{background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.3);color:var(--green);font-family:var(--mono);font-size:10px;padding:6px 14px;cursor:pointer;border-radius:2px;text-transform:uppercase;letter-spacing:0.08em;transition:all 0.15s;}
+.confirm-btn:hover{background:rgba(74,222,128,0.2);}
+.cancel-btn{background:transparent;border:1px solid var(--border);color:var(--text-dim);font-family:var(--mono);font-size:10px;padding:6px 14px;cursor:pointer;border-radius:2px;text-transform:uppercase;letter-spacing:0.08em;transition:all 0.15s;}
+.cancel-btn:hover{border-color:rgba(248,113,113,0.3);color:var(--red);}
+
+/* ── Input ── */
+.chat-input-area{padding:10px 14px;background:var(--bg2);border-top:1px solid var(--border);display:flex;gap:8px;align-items:flex-end;flex-shrink:0;}
+.input-wrap{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:2px;display:flex;align-items:flex-end;padding:7px 11px;gap:7px;transition:border-color 0.15s;}
+.input-wrap:focus-within{border-color:rgba(74,222,128,0.35);}
+.prompt-sym{color:rgba(74,222,128,0.4);font-size:13px;flex-shrink:0;margin-bottom:1px;}
+#chatInput{flex:1;background:transparent;border:none;outline:none;color:var(--text-hi);font-family:var(--mono);font-size:12.5px;resize:none;line-height:1.6;min-height:20px;max-height:100px;scrollbar-width:none;}
+#chatInput::placeholder{color:var(--text-dim);}
+.stream-toggle{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text-dim);flex-shrink:0;cursor:pointer;padding:6px 8px;border:1px solid var(--border);border-radius:2px;transition:all 0.15s;}
+.stream-toggle:hover{border-color:rgba(74,222,128,0.3);color:var(--green);}
+.stream-toggle.on{border-color:rgba(74,222,128,0.3);color:var(--green);}
+.send-btn{background:var(--green-g);border:1px solid rgba(74,222,128,0.3);color:var(--green);font-family:var(--mono);font-size:10px;padding:8px 14px;cursor:pointer;border-radius:2px;letter-spacing:0.08em;text-transform:uppercase;transition:all 0.15s;white-space:nowrap;flex-shrink:0;}
+.send-btn:hover{background:rgba(74,222,128,0.15);}
+.send-btn:disabled{opacity:0.35;cursor:not-allowed;}
+
+/* ── Right panel ── */
+.right-panel{grid-row:1;grid-column:2;display:flex;flex-direction:column;}
+.tab-bar{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;}
+.tab{flex:1;height:32px;display:flex;align-items:center;justify-content:center;font-size:9px;letter-spacing:0.13em;text-transform:uppercase;color:var(--text-dim);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.15s;gap:4px;}
+.tab:hover{color:var(--text);}
+.tab.active{color:var(--green);border-bottom-color:var(--green);}
+.tab-content{display:none;flex:1;flex-direction:column;overflow:hidden;}
+.tab-content.active{display:flex;}
+
+/* Workspace tools panel */
+.tools-scroll{flex:1;overflow-y:auto;padding:10px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;display:flex;flex-direction:column;gap:8px;}
+.tool-section-label{font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:var(--text-dim);padding:4px 0 6px;display:flex;align-items:center;gap:6px;}
+.tool-section-label::after{content:'';flex:1;height:1px;background:var(--border);}
+.tool-card{background:var(--bg3);border:1px solid var(--border);border-radius:3px;overflow:hidden;}
+.tool-card-header{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;}
+.tool-card-name{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--text-hi);}
+.tool-card-name .icon{font-size:13px;}
+.tool-btn{background:transparent;border:1px solid var(--border);color:var(--text-dim);font-family:var(--mono);font-size:9px;padding:3px 8px;cursor:pointer;border-radius:2px;transition:all 0.15s;text-transform:uppercase;}
+.tool-btn:hover{border-color:rgba(74,222,128,0.3);color:var(--green);}
+.tool-result{padding:0 10px;max-height:0;overflow:hidden;transition:max-height 0.3s ease,padding 0.3s ease;}
+.tool-result.open{max-height:200px;padding:0 10px 10px;overflow-y:auto;}
+.tool-result-item{padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.03);font-size:10.5px;line-height:1.5;}
+.tool-result-item:last-child{border-bottom:none;}
+.tool-result-item .item-title{color:var(--text);}
+.tool-result-item .item-meta{color:var(--text-dim);font-size:9.5px;}
+
+/* Ingest tab */
+.ingest-scroll{flex:1;overflow-y:auto;padding:10px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;display:flex;flex-direction:column;gap:10px;}
+.ingest-section{display:flex;flex-direction:column;gap:6px;}
+.ingest-label{font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:var(--text-dim);display:flex;align-items:center;gap:6px;}
+.ingest-label::after{content:'';flex:1;height:1px;background:var(--border);}
+.ingest-row{display:flex;gap:6px;}
+.ingest-input{flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:6px 8px;outline:none;border-radius:2px;min-width:0;}
+.ingest-input:focus{border-color:rgba(74,222,128,0.35);}
+.ingest-input::placeholder{color:var(--text-dim);}
+.ingest-btn{background:var(--green-g);border:1px solid rgba(74,222,128,0.3);color:var(--green);font-family:var(--mono);font-size:9px;padding:6px 10px;cursor:pointer;border-radius:2px;text-transform:uppercase;letter-spacing:0.07em;transition:all 0.15s;white-space:nowrap;flex-shrink:0;}
+.ingest-btn:hover{background:rgba(74,222,128,0.15);}
+.ingest-btn:disabled{opacity:0.4;cursor:not-allowed;}
+.ingest-hint{font-size:9.5px;color:var(--text-dim);line-height:1.6;padding:2px 0;}
+
+/* Stats tab */
+.stats-scroll{flex:1;overflow-y:auto;padding:10px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;display:flex;flex-direction:column;gap:8px;}
+.stat-card{background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:10px;}
+.stat-card-title{font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.stat-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.03);font-size:11px;}
+.stat-row:last-child{border-bottom:none;}
+.stat-key{color:var(--text-dim);}
+.stat-val{color:var(--text-hi);}
+.stat-val.green{color:var(--green);}
+.stat-val.amber{color:var(--amber);}
+.stat-val.dim{color:var(--text-dim);font-size:10px;}
+
+/* ── Bottom panels ── */
+.bottom-left{grid-row:2;grid-column:1;}
+.bottom-right{grid-row:2;grid-column:2;}
+
+/* Briefing panel */
+.briefing-content{flex:1;overflow-y:auto;padding:12px 16px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;font-family:var(--sans);font-size:12.5px;line-height:1.7;color:var(--text);}
+.briefing-content h2{font-family:var(--serif);font-size:15px;color:var(--text-hi);margin:10px 0 5px;font-style:italic;}
+.briefing-content h3{font-family:var(--mono);font-size:10.5px;color:var(--green);text-transform:uppercase;letter-spacing:0.12em;margin:8px 0 4px;}
+.briefing-content ul{padding-left:16px;margin:4px 0;}
+.briefing-content li{margin-bottom:2px;}
+.briefing-content strong{color:var(--text-hi);}
+.briefing-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:8px;color:var(--text-dim);font-size:11px;}
+.briefing-btn{background:var(--green-g);border:1px solid rgba(74,222,128,0.3);color:var(--green);font-family:var(--mono);font-size:10px;padding:7px 16px;cursor:pointer;border-radius:2px;text-transform:uppercase;letter-spacing:0.08em;transition:all 0.15s;}
+.briefing-btn:hover{background:rgba(74,222,128,0.15);}
+
+/* Log */
+.log-list{flex:1;overflow-y:auto;padding:6px 14px;display:flex;flex-direction:column;gap:2px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+.log-entry{display:flex;gap:9px;font-size:10px;line-height:1.5;padding:1px 0;animation:slideUp 0.15s ease;}
+.log-ts{color:var(--text-dim);flex-shrink:0;font-variant-numeric:tabular-nums;}
+.log-lv{flex-shrink:0;width:32px;text-align:right;}
+.log-lv.info{color:var(--blue);}
+.log-lv.ok{color:var(--green);}
+.log-lv.warn{color:var(--amber);}
+.log-lv.err{color:var(--red);}
+.log-msg{color:var(--text);flex:1;}
+
+/* Notifs */
+.notif-stack{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:5px;z-index:500;pointer-events:none;}
+.notif{background:var(--bg3);border:1px solid var(--border);padding:7px 14px;font-size:11px;border-radius:2px;animation:notifIn 0.2s ease;pointer-events:auto;white-space:nowrap;}
+.notif.ok{border-color:rgba(74,222,128,0.4);color:var(--green);}
+.notif.err{border-color:rgba(248,113,113,0.4);color:var(--red);}
+.notif.info{border-color:rgba(74,222,128,0.2);color:var(--teal);}
+
+/* Spinner */
+.spinner{width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0;}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:7px;color:var(--text-dim);font-size:11px;padding:20px 0;}
+
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+@keyframes slideUp{from{opacity:0;transform:translateY(7px);}to{opacity:1;transform:none;}}
+@keyframes pulse{0%,100%{opacity:0.3;transform:scale(0.8);}50%{opacity:1;transform:scale(1.1);}}
+@keyframes spin{to{transform:rotate(360deg);}}
+@keyframes notifIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+</style>
+</head>
+<body>
+
+<!-- ══ TOP BAR ══ -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo">ATLAS <em>Workspace v3</em></div>
+    <div class="pills">
+      <div class="pill" id="pillAgent"><span class="dot"></span><span id="pillAgentTxt">connecting</span></div>
+      <div class="pill" id="pillRag"><span class="dot"></span><span id="pillRagTxt">rag model</span></div>
+      <div class="pill" id="pillBriefing"><span class="dot"></span><span id="pillBriefingTxt">briefing model</span></div>
+      <div class="pill" id="pillGoogle"><span class="dot"></span><span id="pillGoogleTxt">google</span></div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span>chunks: <span class="doc-count" id="topDocs">—</span></span>
+    <span id="clock">--:--:--</span>
+  </div>
+</div>
+
+<!-- ══ WORKSPACE ══ -->
+<div class="workspace">
+
+  <!-- ── CHAT ── -->
+  <div class="panel chat-panel">
+    <div class="panel-header">
+      <div class="panel-title"><span class="acc">01</span> Intelligence Query — Hybrid RAG</div>
+      <div class="panel-actions">
+        <button class="p-btn" id="streamBtn" onclick="toggleStream()" title="Toggle streaming">stream: on</button>
+        <button class="p-btn" onclick="clearChat()">clear</button>
+      </div>
+    </div>
+    <div class="chat-msgs" id="chatMsgs">
+      <div class="welcome" id="welcomeMsg">
+        <div class="welcome-glyph">A</div>
+        <h2>What can I help you with?</h2>
+        <p>Hybrid RAG: BM25 + ChromaDB → Qwen3-Reranker. Streaming responses. Full Google Workspace integration.</p>
+        <div class="hint-chips">
+          <div class="hint" onclick="useHint(this)">What's on my calendar today?</div>
+          <div class="hint" onclick="useHint(this)">Summarize my open tasks</div>
+          <div class="hint" onclick="useHint(this)">What do I know about this project?</div>
+          <div class="hint" onclick="useHint(this)">Add a task: Review documents</div>
+        </div>
+      </div>
+    </div>
+    <div class="chat-input-area">
+      <div class="input-wrap">
+        <span class="prompt-sym">›</span>
+        <textarea id="chatInput" rows="1" placeholder="Ask anything — RAG, calendar, tasks, sheets…"
+          onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+      </div>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()">Send ↵</button>
+    </div>
+  </div>
+
+  <!-- ── RIGHT PANEL ── -->
+  <div class="panel right-panel">
+    <div class="tab-bar">
+      <div class="tab active" onclick="switchTab('tools',this)">⬡ Tools</div>
+      <div class="tab" onclick="switchTab('ingest',this)">↓ Ingest</div>
+      <div class="tab" onclick="switchTab('stats',this)">◈ Stats</div>
+    </div>
+
+    <!-- Tools tab -->
+    <div class="tab-content active" id="tab-tools">
+      <div class="tools-scroll">
+        <div class="tool-section-label">Calendar</div>
+        <div class="tool-card">
+          <div class="tool-card-header">
+            <div class="tool-card-name"><span class="icon">📅</span>Upcoming Events</div>
+            <button class="tool-btn" onclick="loadCalendar()">Fetch</button>
+          </div>
+          <div class="tool-result" id="calResult"></div>
+        </div>
+
+        <div class="tool-section-label">Tasks</div>
+        <div class="tool-card">
+          <div class="tool-card-header">
+            <div class="tool-card-name"><span class="icon">✅</span>Open Tasks</div>
+            <button class="tool-btn" onclick="loadTasks()">Fetch</button>
+          </div>
+          <div class="tool-result" id="tasksResult"></div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-card-header">
+            <div class="tool-card-name"><span class="icon">➕</span>Create Task</div>
+          </div>
+          <div style="padding:0 10px 10px;display:flex;flex-direction:column;gap:6px;">
+            <input class="ingest-input" id="newTaskTitle" placeholder="Task title…" style="font-size:11px;">
+            <input class="ingest-input" id="newTaskNotes" placeholder="Notes (optional)…" style="font-size:11px;">
+            <button class="ingest-btn" onclick="createTask()" style="align-self:flex-start;">Create Task</button>
+          </div>
+        </div>
+
+        <div class="tool-section-label">Drive</div>
+        <div class="tool-card">
+          <div class="tool-card-header">
+            <div class="tool-card-name"><span class="icon">◈</span>Google Drive</div>
+            <button class="tool-btn" onclick="loadDrive()">List</button>
+          </div>
+          <div class="tool-result" id="driveResult"></div>
+        </div>
+
+        <div class="tool-section-label">Gmail</div>
+        <div class="tool-card">
+          <div class="tool-card-header">
+            <div class="tool-card-name"><span class="icon">✉</span>Recent Mail</div>
+            <button class="tool-btn" onclick="loadGmail()">Fetch</button>
+          </div>
+          <div class="tool-result" id="gmailResult"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ingest tab -->
+    <div class="tab-content" id="tab-ingest">
+      <div class="ingest-scroll">
+        <div class="ingest-section">
+          <div class="ingest-label">Google Doc</div>
+          <div class="ingest-row">
+            <input class="ingest-input" id="gdocId" placeholder="Google Doc ID…">
+            <button class="ingest-btn" onclick="ingestDoc('gdoc')">Ingest</button>
+          </div>
+          <div class="ingest-hint">From URL: /document/d/<span style="color:rgba(74,222,128,0.5)">DOC_ID</span>/edit</div>
+        </div>
+        <div class="ingest-section">
+          <div class="ingest-label">Google Sheet</div>
+          <div class="ingest-row">
+            <input class="ingest-input" id="gsheetId" placeholder="Spreadsheet ID…">
+            <button class="ingest-btn" onclick="ingestDoc('gsheet')">Ingest</button>
+          </div>
+          <div class="ingest-hint">From URL: /spreadsheets/d/<span style="color:rgba(74,222,128,0.5)">SHEET_ID</span>/edit</div>
+        </div>
+        <div class="ingest-section">
+          <div class="ingest-label">YouTube Video</div>
+          <div class="ingest-row">
+            <input class="ingest-input" id="ytId" placeholder="Video ID (not full URL)…">
+            <button class="ingest-btn" onclick="ingestDoc('youtube')">Ingest</button>
+          </div>
+          <div class="ingest-hint">From URL: youtube.com/watch?v=<span style="color:rgba(74,222,128,0.5)">VIDEO_ID</span></div>
+        </div>
+        <div class="ingest-section">
+          <div class="ingest-label">Local Knowledge</div>
+          <button class="ingest-btn" style="width:100%" onclick="ingestLocal()">↺ Rescan knowledge/ folder</button>
+          <div class="ingest-hint">Drop .txt or .md files into ~/atlas_workspace/knowledge/ then rescan.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats tab -->
+    <div class="tab-content" id="tab-stats">
+      <div class="stats-scroll">
+        <div class="stat-card">
+          <div class="stat-card-title">System</div>
+          <div class="stat-row"><span class="stat-key">status</span><span class="stat-val green" id="sStatus">—</span></div>
+          <div class="stat-row"><span class="stat-key">rag model</span><span class="stat-val green" id="sRag">—</span></div>
+          <div class="stat-row"><span class="stat-key">briefing model</span><span class="stat-val" id="sBriefing">—</span></div>
+          <div class="stat-row"><span class="stat-key">embed model</span><span class="stat-val dim" id="sEmbed">—</span></div>
+          <div class="stat-row"><span class="stat-key">reranker</span><span class="stat-val dim" id="sRerank">—</span></div>
+          <div class="stat-row"><span class="stat-key">collection</span><span class="stat-val dim" id="sCollection">—</span></div>
+          <div class="stat-row"><span class="stat-key">doc chunks</span><span class="stat-val green" id="sDocs">—</span></div>
+          <div class="stat-row"><span class="stat-key">google</span><span class="stat-val" id="sGoogle">—</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-title">Session</div>
+          <div class="stat-row"><span class="stat-key">queries</span><span class="stat-val green" id="sesQ">0</span></div>
+          <div class="stat-row"><span class="stat-key">ingested</span><span class="stat-val" id="sesI">0</span></div>
+          <div class="stat-row"><span class="stat-key">avg chunks</span><span class="stat-val" id="sesC">—</span></div>
+          <div class="stat-row"><span class="stat-key">last latency</span><span class="stat-val" id="sesL">—</span></div>
+          <div class="stat-row"><span class="stat-key">api</span><span class="stat-val dim">localhost:8001</span></div>
+        </div>
+        <a href="http://localhost:8001/docs" target="_blank"
+           style="color:rgba(74,222,128,0.4);font-size:10px;text-decoration:none;padding:4px 0;">→ Swagger UI ↗</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── BRIEFING PANEL ── -->
+  <div class="panel bottom-left">
+    <div class="panel-header">
+      <div class="panel-title"><span class="acc">02</span> Morning Briefing — qwen2.5:14b</div>
+      <div class="panel-actions">
+        <button class="p-btn" id="briefingBtn" onclick="loadBriefing()">↺ Generate</button>
+      </div>
+    </div>
+    <div id="briefingArea" class="briefing-empty">
+      <span style="font-size:22px;opacity:0.15">◈</span>
+      <span>Click Generate for your AI morning briefing</span>
+      <span style="font-size:10px;color:var(--text-dim)">Calendar + Tasks + Project Notes → qwen2.5:14b synthesis</span>
+    </div>
+  </div>
+
+  <!-- ── LOG PANEL ── -->
+  <div class="panel bottom-right">
+    <div class="panel-header">
+      <div class="panel-title"><span class="acc">03</span> Activity Log</div>
+      <div class="panel-actions"><button class="p-btn" onclick="clearLog()">clear</button></div>
+    </div>
+    <div class="log-list" id="logList"></div>
+  </div>
+
+</div>
+<div class="notif-stack" id="notifStack"></div>
+
+<script>
+const API = 'http://localhost:8001';
+let streaming = true;
+let session = {q:0, i:0, chunks:0, lastMs:0};
+
+// ── Clock ──────────────────────────────────────────────────────────────────
+setInterval(() => {
+  document.getElementById('clock').textContent =
+    new Date().toLocaleTimeString('en-US',{hour12:false});
+}, 1000);
+
+// ── Log ────────────────────────────────────────────────────────────────────
+function log(msg, lv='info') {
+  const el  = document.createElement('div');
+  const ts  = new Date().toLocaleTimeString('en-US',{hour12:false});
+  el.className = 'log-entry';
+  el.innerHTML = `<span class="log-ts">${ts}</span><span class="log-lv ${lv}">${lv.toUpperCase()}</span><span class="log-msg">${msg}</span>`;
+  const list = document.getElementById('logList');
+  list.appendChild(el);
+  list.scrollTop = list.scrollHeight;
+}
+function clearLog(){ document.getElementById('logList').innerHTML=''; }
+
+// ── Notify ─────────────────────────────────────────────────────────────────
+function notify(msg, type='info', ms=3000) {
+  const el = document.createElement('div');
+  el.className = `notif ${type}`;
+  el.textContent = msg;
+  document.getElementById('notifStack').appendChild(el);
+  setTimeout(()=>{ el.style.opacity='0'; el.style.transition='opacity 0.3s'; setTimeout(()=>el.remove(),300); }, ms);
+}
+
+// ── API ────────────────────────────────────────────────────────────────────
+async function api(method, path, body=null) {
+  const opts = {method, headers:{'Content-Type':'application/json'}};
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(API+path, opts);
+  if (!res.ok) { const e=await res.json().catch(()=>({detail:res.statusText})); throw new Error(e.detail||res.statusText); }
+  return res.json();
+}
+
+// ── Status ─────────────────────────────────────────────────────────────────
+async function refreshStatus() {
+  try {
+    const s = await api('GET','/');
+    setPill('pillAgent','pillAgentTxt','online','online');
+    setPill('pillRag','pillRagTxt','online',s.rag_model.split(':')[0]);
+    setPill('pillBriefing','pillBriefingTxt','online',s.briefing_model.split(':')[0]);
+    setPill('pillGoogle','pillGoogleTxt', s.google_connected?'online':'warn',
+            s.google_connected?'google ✓':'google ✗');
+    document.getElementById('topDocs').textContent = s.doc_count;
+    document.getElementById('sStatus').textContent     = s.status;
+    document.getElementById('sRag').textContent        = s.rag_model;
+    document.getElementById('sBriefing').textContent   = s.briefing_model;
+    document.getElementById('sEmbed').textContent      = s.embed_model;
+    document.getElementById('sRerank').textContent     = s.rerank_model;
+    document.getElementById('sCollection').textContent = s.collection;
+    document.getElementById('sDocs').textContent       = s.doc_count;
+    document.getElementById('sGoogle').textContent     = s.google_connected ? 'connected' : 'offline';
+    document.getElementById('sGoogle').className       = 'stat-val '+(s.google_connected?'green':'amber');
+  } catch(e) {
+    setPill('pillAgent','pillAgentTxt','err','offline');
+    log('Cannot reach agent at localhost:8001 — is it running?','err');
+  }
+}
+function setPill(id,tid,cls,txt) {
+  document.getElementById(id).className=`pill ${cls}`;
+  document.getElementById(tid).textContent=txt;
+}
+function updateSession() {
+  document.getElementById('sesQ').textContent = session.q;
+  document.getElementById('sesI').textContent = session.i;
+  document.getElementById('sesC').textContent = session.q>0?(session.chunks/session.q).toFixed(1):'—';
+  document.getElementById('sesL').textContent = session.lastMs?session.lastMs+'ms':'—';
+}
+
+// ── Chat ───────────────────────────────────────────────────────────────────
+function handleKey(e){ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();} }
+function autoResize(el){ el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,100)+'px'; }
+function useHint(el){ document.getElementById('chatInput').value=el.textContent; sendMessage(); }
+function clearChat(){
+  const m=document.getElementById('chatMsgs'); m.innerHTML='';
+  m.innerHTML=`<div class="welcome" id="welcomeMsg">
+    <div class="welcome-glyph">A</div>
+    <h2>What can I help you with?</h2>
+    <p>Hybrid RAG with streaming responses and full Google Workspace integration.</p></div>`;
+}
+function toggleStream(){
+  streaming=!streaming;
+  const btn=document.getElementById('streamBtn');
+  btn.textContent='stream: '+(streaming?'on':'off');
+  btn.className='p-btn'+(streaming?' active':'');
+}
+
+async function sendMessage() {
+  const input    = document.getElementById('chatInput');
+  const btn      = document.getElementById('sendBtn');
+  const question = input.value.trim();
+  if (!question) return;
+  const welcome  = document.getElementById('welcomeMsg');
+  if (welcome) welcome.remove();
+  addMessage('user', question);
+  input.value=''; input.style.height='auto'; btn.disabled=true;
+  const t0 = Date.now();
+  log(`Query: "${question.substring(0,60)}${question.length>60?'…':''}"`, 'info');
+
+  if (streaming) {
+    await sendStreaming(question, t0);
+  } else {
+    await sendStandard(question, t0);
+  }
+  btn.disabled=false;
+  document.getElementById('chatInput').focus();
+}
+
+async function sendStandard(question, t0) {
+  const thinkEl = addThinking();
+  try {
+    const data = await api('POST','/ask',{question, n_results:3});
+    thinkEl.remove();
+    const ms = Date.now()-t0;
+    addAgentMessage(data.answer, data.chunks_used, ms, data.search_trace);
+    session.q++; session.chunks+=data.chunks_used; session.lastMs=ms;
+    updateSession();
+    log(`Response in ${ms}ms — ${data.chunks_used} chunks`, 'ok');
+  } catch(e) {
+    thinkEl.remove();
+    addMessage('agent',`Error: ${e.message}`);
+    log(`Query failed: ${e.message}`,'err');
+    notify(e.message,'err');
+  }
+}
+
+async function sendStreaming(question, t0) {
+  const msgs    = document.getElementById('chatMsgs');
+  const wrapper = document.createElement('div');
+  wrapper.className='message agent';
+  const label   = document.createElement('div');
+  label.className='msg-label';
+  label.innerHTML='<span>atlas</span>';
+  const bubble  = document.createElement('div');
+  bubble.className='msg-bubble';
+  bubble.style.minWidth='200px';
+  const thinkDiv= document.createElement('div');
+  thinkDiv.className='thinking';
+  thinkDiv.innerHTML=`<div class="dots"><span></span><span></span><span></span></div><span class="thinking-label">thinking…</span>`;
+  wrapper.appendChild(label);
+  wrapper.appendChild(thinkDiv);
+  msgs.appendChild(wrapper);
+  msgs.scrollTop=msgs.scrollHeight;
+
+  let fullText='', trace=null, chunks=0;
+  try {
+    const es = new EventSource(`${API}/ask/stream?question=${encodeURIComponent(question)}`);
+    await new Promise((resolve,reject) => {
+      es.onmessage = (e) => {
+        const d = JSON.parse(e.data);
+        if (d.type==='trace') {
+          trace=d.trace; chunks=d.chunks;
+          thinkDiv.remove();
+          wrapper.appendChild(bubble);
+        } else if (d.type==='token') {
+          fullText+=d.content;
+          bubble.innerHTML = marked.parse(fullText);
+          msgs.scrollTop=msgs.scrollHeight;
+        } else if (d.type==='done') {
+          es.close(); resolve();
+        }
+      };
+      es.onerror = (e) => { es.close(); reject(new Error('Stream error')); };
+    });
+    const ms=Date.now()-t0;
+    if (trace) appendTrace(wrapper, trace, chunks, ms);
+    session.q++; session.chunks+=chunks; session.lastMs=ms;
+    updateSession();
+    log(`Streamed in ${ms}ms — ${chunks} chunks`,'ok');
+  } catch(e) {
+    thinkDiv.remove();
+    bubble.textContent=`Error: ${e.message}`;
+    wrapper.appendChild(bubble);
+    log(`Stream failed: ${e.message}`,'err');
+    notify(e.message,'err');
+  }
+}
+
+function addMessage(role, text) {
+  const msgs = document.getElementById('chatMsgs');
+  const ts   = new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit'});
+  const el   = document.createElement('div');
+  el.className=`message ${role}`;
+  el.innerHTML=`
+    <div class="msg-label"><span>${role==='user'?'you':'atlas'}</span><span style="opacity:.5">${ts}</span></div>
+    <div class="msg-bubble">${role==='user'?esc(text):marked.parse(text)}</div>`;
+  msgs.appendChild(el);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
+function addAgentMessage(text, chunks, ms, trace) {
+  const msgs = document.getElementById('chatMsgs');
+  const ts   = new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit'});
+  const el   = document.createElement('div');
+  el.className='message agent';
+  el.innerHTML=`
+    <div class="msg-label"><span>atlas</span><span style="opacity:.5">${ts}</span></div>
+    <div class="msg-bubble">${marked.parse(text)}</div>
+    <div class="msg-meta"><span class="chunks">▪ ${chunks} chunk${chunks!==1?'s':''} retrieved</span><span>${ms}ms</span></div>`;
+  msgs.appendChild(el);
+  if (trace) appendTrace(el, trace, chunks, ms);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
+function appendTrace(parent, trace, chunks, ms) {
+  const el = document.createElement('div');
+  el.className='thought-trace';
+  const bm25    = trace.step1_bm25||{};
+  const vec     = trace.step2_vector||{};
+  const rerank  = trace.step3_reranker||{};
+  el.innerHTML=`
+    <div class="trace-header" onclick="this.nextElementSibling.classList.toggle('open')">
+      <span>◈ Hybrid Search Trace</span><span>▾</span>
+    </div>
+    <div class="trace-body">
+      <div class="trace-step">
+        <div class="trace-num bm25">1</div>
+        <div class="trace-content">
+          <div class="trace-label">BM25 Keyword Search</div>
+          <div class="trace-detail">${bm25.candidates||0} candidates — top scores: ${(bm25.top_scores||[]).join(', ')||'n/a'}</div>
+        </div>
+      </div>
+      <div class="trace-step">
+        <div class="trace-num vec">2</div>
+        <div class="trace-content">
+          <div class="trace-label">ChromaDB Vector Search</div>
+          <div class="trace-detail">${vec.candidates||0} candidates — nomic-embed-text</div>
+        </div>
+      </div>
+      <div class="trace-step">
+        <div class="trace-num rank">3</div>
+        <div class="trace-content">
+          <div class="trace-label">Qwen3-Reranker Selection</div>
+          <div class="trace-detail">${rerank.selected||0} final chunks selected — model: ${rerank.model||'qwen3-reranker'}</div>
+        </div>
+      </div>
+    </div>`;
+  parent.appendChild(el);
+}
+
+function addThinking() {
+  const msgs = document.getElementById('chatMsgs');
+  const el   = document.createElement('div');
+  el.className='message agent';
+  el.innerHTML=`<div class="msg-label"><span>atlas</span></div>
+    <div class="thinking"><div class="dots"><span></span><span></span><span></span></div><span class="thinking-label">reasoning…</span></div>`;
+  msgs.appendChild(el);
+  msgs.scrollTop=msgs.scrollHeight;
+  return el;
+}
+
+// ── Action confirmation card ───────────────────────────────────────────────
+function showActionCard(tool, action, data, onConfirm) {
+  const msgs  = document.getElementById('chatMsgs');
+  const id    = 'card_'+Date.now();
+  const icons = {google_calendar:'📅',google_tasks:'✅',google_sheets:'📊',google_docs:'📄'};
+  const icon  = icons[tool]||'⚙️';
+  const fields= Object.entries(data).map(([k,v])=>
+    `<div class="field"><span class="field-key">${k}</span><span class="field-val">${v}</span></div>`).join('');
+  const el    = document.createElement('div');
+  el.className='message agent';
+  el.innerHTML=`
+    <div class="msg-label"><span>atlas — proposed action</span></div>
+    <div class="action-card" id="${id}">
+      <div class="action-card-header">
+        <span class="action-card-icon">${icon}</span>
+        <span class="action-card-title">${tool} / ${action}</span>
+      </div>
+      <div class="action-card-body">${fields}</div>
+      <div class="action-card-footer">
+        <button class="confirm-btn" onclick="confirmAction('${id}')">✓ Confirm</button>
+        <button class="cancel-btn" onclick="cancelAction('${id}')">✗ Cancel</button>
+      </div>
+    </div>`;
+  msgs.appendChild(el);
+  msgs.scrollTop=msgs.scrollHeight;
+  window._pendingActions = window._pendingActions||{};
+  window._pendingActions[id] = onConfirm;
+}
+
+async function confirmAction(id) {
+  const fn = (window._pendingActions||{})[id];
+  if (fn) { await fn(); delete window._pendingActions[id]; }
+  document.getElementById(id).querySelector('.action-card-footer').innerHTML=
+    '<span style="color:var(--green);font-size:10px;padding:6px 0;">✓ Executed</span>';
+}
+function cancelAction(id) {
+  delete (window._pendingActions||{})[id];
+  document.getElementById(id).querySelector('.action-card-footer').innerHTML=
+    '<span style="color:var(--text-dim);font-size:10px;padding:6px 0;">Cancelled</span>';
+}
+
+// ── Tabs ───────────────────────────────────────────────────────────────────
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+// ── Calendar ───────────────────────────────────────────────────────────────
+async function loadCalendar() {
+  const el = document.getElementById('calResult');
+  el.innerHTML='<div style="padding:8px 0;color:var(--text-dim);font-size:10px;">loading…</div>';
+  el.classList.add('open');
+  log('Fetching calendar events','info');
+  try {
+    const data = await api('GET','/calendar/events?hours=24');
+    if (!data.events.length) { el.innerHTML='<div class="tool-result-item"><span class="item-meta">No events in next 24h</span></div>'; return; }
+    el.innerHTML = data.events.map(e=>`
+      <div class="tool-result-item">
+        <div class="item-title">${esc(e.summary)}</div>
+        <div class="item-meta">${e.start.substring(0,16).replace('T',' ')}${e.location?' · '+esc(e.location):''}</div>
+      </div>`).join('');
+    log(`Loaded ${data.events.length} calendar events`,'ok');
+  } catch(e) { el.innerHTML=`<div class="tool-result-item"><span style="color:var(--red)">${e.message}</span></div>`; log('Calendar error: '+e.message,'err'); }
+}
+
+// ── Tasks ──────────────────────────────────────────────────────────────────
+async function loadTasks() {
+  const el = document.getElementById('tasksResult');
+  el.innerHTML='<div style="padding:8px 0;color:var(--text-dim);font-size:10px;">loading…</div>';
+  el.classList.add('open');
+  log('Fetching tasks','info');
+  try {
+    const data = await api('GET','/tasks');
+    if (!data.tasks.length) { el.innerHTML='<div class="tool-result-item"><span class="item-meta">No open tasks</span></div>'; return; }
+    el.innerHTML = data.tasks.map(t=>`
+      <div class="tool-result-item">
+        <div class="item-title">${esc(t.title)}</div>
+        <div class="item-meta">${t.due?'Due: '+t.due.substring(0,10):'No due date'}${t.notes?' · '+esc(t.notes.substring(0,40)):''}</div>
+      </div>`).join('');
+    log(`Loaded ${data.tasks.length} tasks`,'ok');
+  } catch(e) { el.innerHTML=`<div class="tool-result-item"><span style="color:var(--red)">${e.message}</span></div>`; log('Tasks error: '+e.message,'err'); }
+}
+
+async function createTask() {
+  const title = document.getElementById('newTaskTitle').value.trim();
+  const notes = document.getElementById('newTaskNotes').value.trim();
+  if (!title) { notify('Enter a task title','info'); return; }
+  showActionCard('google_tasks','create_task',{title, notes:notes||'(none)'},async()=>{
+    try {
+      await api('POST','/tools/execute',{tool:'google_tasks',action:'create_task',data:{title,notes}});
+      document.getElementById('newTaskTitle').value='';
+      document.getElementById('newTaskNotes').value='';
+      notify('✓ Task created','ok');
+      log(`Task created: "${title}"`,'ok');
+      loadTasks();
+    } catch(e){ notify(e.message,'err'); log('Create task failed: '+e.message,'err'); }
+  });
+}
+
+// ── Drive ──────────────────────────────────────────────────────────────────
+async function loadDrive() {
+  const el = document.getElementById('driveResult');
+  el.innerHTML='<div style="padding:8px 0;color:var(--text-dim);font-size:10px;">loading…</div>';
+  el.classList.add('open');
+  log('Listing Drive files','info');
+  try {
+    const data = await api('GET','/drive/files?max_results=15');
+    if (!data.files.length) { el.innerHTML='<div class="tool-result-item"><span class="item-meta">No files found</span></div>'; return; }
+    el.innerHTML = data.files.map(f=>`
+      <div class="tool-result-item" style="cursor:pointer;" onclick="promptIngestFile('${f.id}','${esc(f.name)}','${f.mimeType}')">
+        <div class="item-title">${mimeIcon(f.mimeType)} ${esc(f.name)}</div>
+        <div class="item-meta">${f.id.substring(0,20)}…${f.mimeType.includes('document')||f.mimeType.includes('spreadsheet')?' · click to ingest':''}</div>
+      </div>`).join('');
+    log(`Listed ${data.files.length} Drive files`,'ok');
+  } catch(e){ el.innerHTML=`<div class="tool-result-item"><span style="color:var(--red)">${e.message}</span></div>`; log('Drive error: '+e.message,'err'); }
+}
+
+function promptIngestFile(id, name, mime) {
+  if (!mime.includes('document') && !mime.includes('spreadsheet')) return;
+  const type = mime.includes('spreadsheet') ? 'gsheet' : 'gdoc';
+  showActionCard('ingest',`${type}`,{name,id},async()=>{
+    try {
+      await api('POST','/ingest/doc',{doc_id:id,doc_type:type});
+      notify(`✓ Ingesting "${name}"…`,'ok');
+      log(`Ingesting ${type}: ${name}`,'ok');
+      session.i++; updateSession();
+      setTimeout(refreshStatus,3000);
+    } catch(e){ notify(e.message,'err'); }
+  });
+}
+
+// ── Gmail ──────────────────────────────────────────────────────────────────
+async function loadGmail() {
+  const el = document.getElementById('gmailResult');
+  el.innerHTML='<div style="padding:8px 0;color:var(--text-dim);font-size:10px;">loading…</div>';
+  el.classList.add('open');
+  log('Fetching Gmail subjects','info');
+  try {
+    const data = await api('GET','/gmail/recent?n=8');
+    el.innerHTML = data.subjects.map((s,i)=>`
+      <div class="tool-result-item">
+        <div class="item-meta" style="margin-bottom:1px;">#${String(i+1).padStart(2,'0')}</div>
+        <div class="item-title">${esc(s)}</div>
+      </div>`).join('');
+    log(`Loaded ${data.subjects.length} email subjects`,'ok');
+  } catch(e){ el.innerHTML=`<div class="tool-result-item"><span style="color:var(--red)">${e.message}</span></div>`; log('Gmail error: '+e.message,'err'); }
+}
+
+// ── Ingest ─────────────────────────────────────────────────────────────────
+async function ingestDoc(type) {
+  const ids = {gdoc:'gdocId',gsheet:'gsheetId',youtube:'ytId'};
+  const id  = document.getElementById(ids[type]).value.trim();
+  if (!id) { notify('Enter an ID first','info'); return; }
+  log(`Ingesting ${type}: ${id}`,'info');
+  try {
+    await api('POST','/ingest/doc',{doc_id:id,doc_type:type});
+    notify(`✓ Ingesting ${type} in background…`,'ok');
+    log(`Ingest started for ${type}: ${id}`,'ok');
+    document.getElementById(ids[type]).value='';
+    session.i++; updateSession();
+    setTimeout(refreshStatus,5000);
+  } catch(e){ notify(e.message,'err'); log('Ingest failed: '+e.message,'err'); }
+}
+
+async function ingestLocal() {
+  log('Rescanning knowledge/ folder…','info');
+  try {
+    await api('POST','/ingest/local');
+    notify('✓ Local rescan started','ok');
+    log('Local ingest started','ok');
+    session.i++; updateSession();
+    setTimeout(refreshStatus,3000);
+  } catch(e){ notify(e.message,'err'); log('Local ingest failed: '+e.message,'err'); }
+}
+
+// ── Briefing ───────────────────────────────────────────────────────────────
+async function loadBriefing() {
+  const area = document.getElementById('briefingArea');
+  const btn  = document.getElementById('briefingBtn');
+  area.className='briefing-content';
+  area.innerHTML='<div style="display:flex;align-items:center;gap:10px;color:var(--text-dim);font-size:12px;padding:20px 0;"><div class="spinner"></div> Generating with qwen2.5:14b — this may take 30–60 seconds…</div>';
+  btn.disabled=true; btn.textContent='generating…';
+  log('Generating morning briefing with qwen2.5:14b…','info');
+  try {
+    const data = await api('GET','/briefing');
+    area.innerHTML = marked.parse(data.briefing);
+    log(`Briefing generated — ${data.data.events.length} events, ${data.data.tasks.length} tasks, ${data.data.notes_retrieved} note chunks`,'ok');
+    notify('✓ Briefing ready','ok');
+  } catch(e){
+    area.innerHTML=`<span style="color:var(--red)">${e.message}</span>`;
+    log('Briefing failed: '+e.message,'err');
+    notify(e.message,'err');
+  } finally {
+    btn.disabled=false; btn.textContent='↺ Generate';
+  }
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function esc(t){ return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function mimeIcon(m){
+  if(m.includes('document'))    return '📄';
+  if(m.includes('spreadsheet')) return '📊';
+  if(m.includes('presentation'))return '📽';
+  if(m.includes('folder'))      return '📁';
+  if(m.includes('pdf'))         return '📕';
+  return '📎';
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+document.getElementById('streamBtn').className='p-btn active';
+log('ATLAS Workspace v3 initialised','info');
+log('Connecting to agent at localhost:8001…','info');
+refreshStatus();
+setInterval(refreshStatus, 30000);
+</script>
+</body>
+</html>

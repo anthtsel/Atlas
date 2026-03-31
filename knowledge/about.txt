@@ -1,0 +1,1 @@
+ATLAS Workspace is an agentic AI system combining local LLMs, hybrid search, and Google Workspace integration.
