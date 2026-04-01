@@ -13,7 +13,7 @@ ATLAS Workspace Agent — v3.0
 import os, re, logging, asyncio, json
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Optional, AsyncIterator
+from typing import Optional, AsyncIterator, TypedDict
 from datetime import datetime, timezone, timedelta
 
 from dotenv import load_dotenv
@@ -24,6 +24,7 @@ from rank_bm25 import BM25Okapi
 
 # Google APIs
 from google.auth.transport.requests import Request
+from google.auth.exceptions import RefreshError
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
@@ -85,6 +86,14 @@ class AskResponse(BaseModel):
     answer: str
     chunks_used: int
     search_trace: dict        # exposes the hybrid search steps to the UI
+    sources: list[dict] = []  # per-chunk provenance for UI source cards
+
+
+class ChunkResult(TypedDict):
+    text: str
+    source: str       # doc_id from ChromaDB metadata["source"]
+    score: float      # rank-based: 1.0 - (rank / n), top chunk = 1.0
+    chunk_index: int  # metadata["chunk"] integer
 
 class IngestDocRequest(BaseModel):
     doc_id: str
@@ -141,10 +150,11 @@ class HybridSearch:
         except Exception as e:
             log.warning("BM25 refresh failed: %s", e)
 
-    def search(self, query: str, ollama_client) -> tuple[list[str], dict]:
+    def search(self, query: str, ollama_client) -> tuple[list[ChunkResult], dict]:
         """
         Returns (top_chunks, trace_dict) where trace_dict exposes
         each pipeline step for the frontend thought-trace visualization.
+        Each ChunkResult carries text, source filename, score, and chunk index.
         """
         trace = {
             "step1_bm25":    {"candidates": 0, "top_scores": []},
@@ -158,31 +168,54 @@ class HybridSearch:
             return [], trace
 
         # ── Stage 1: BM25 ─────────────────────────────────────────────────────
-        bm25_chunks = []
+        bm25_chunks: list[ChunkResult] = []
         if self._bm25:
-            tokens     = query.lower().split()
-            scores     = self._bm25.get_scores(tokens)
-            top_idxs   = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:BM25_TOP_K]
-            bm25_chunks= [self._corpus[i] for i in top_idxs if scores[i] > 0]
+            tokens   = query.lower().split()
+            scores   = self._bm25.get_scores(tokens)
+            top_idxs = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:BM25_TOP_K]
+            for i in top_idxs:
+                if scores[i] > 0:
+                    cid    = self._corpus_ids[i]
+                    parts  = cid.rsplit("_chunk", 1)
+                    source = parts[0]
+                    cidx   = int(parts[1]) if len(parts) == 2 and parts[1].isdigit() else 0
+                    bm25_chunks.append(ChunkResult(
+                        text=self._corpus[i], source=source,
+                        score=float(scores[i]), chunk_index=cidx,
+                    ))
             trace["step1_bm25"]["candidates"] = len(bm25_chunks)
             trace["step1_bm25"]["top_scores"] = [round(float(scores[i]), 3) for i in top_idxs[:5]]
 
         # ── Stage 2: ChromaDB vector search ───────────────────────────────────
+        vector_chunks: list[ChunkResult] = []
         try:
-            vec_results   = self.collection.query(query_texts=[query], n_results=min(VECTOR_TOP_K, len(self._corpus)))
-            vector_chunks = vec_results["documents"][0] if vec_results["documents"] else []
+            vec_results   = self.collection.query(
+                query_texts=[query],
+                n_results=min(VECTOR_TOP_K, len(self._corpus)),
+                include=["documents", "metadatas", "distances"],
+            )
+            vec_docs      = vec_results["documents"][0]  if vec_results["documents"]  else []
+            vec_metas     = vec_results["metadatas"][0]  if vec_results["metadatas"]  else []
+            vec_distances = vec_results["distances"][0]  if vec_results["distances"]  else []
+            for doc, meta, dist in zip(vec_docs, vec_metas, vec_distances):
+                vector_chunks.append(ChunkResult(
+                    text=doc,
+                    source=meta.get("source", "unknown"),
+                    score=max(0.0, 1.0 - float(dist)),
+                    chunk_index=int(meta.get("chunk", 0)),
+                ))
             trace["step2_vector"]["candidates"] = len(vector_chunks)
         except Exception:
-            vector_chunks = []
+            pass
 
         # ── Merge & deduplicate ────────────────────────────────────────────────
-        seen   = set()
-        merged = []
-        for chunk in bm25_chunks + vector_chunks:
-            key = chunk[:80]
+        seen:   set[tuple] = set()
+        merged: list[ChunkResult] = []
+        for cr in bm25_chunks + vector_chunks:
+            key = (cr["source"], cr["chunk_index"])
             if key not in seen:
                 seen.add(key)
-                merged.append(chunk)
+                merged.append(cr)
 
         if not merged:
             return [], trace
@@ -194,7 +227,7 @@ class HybridSearch:
                 f"Rank these {len(merged)} passages from most to least relevant. "
                 f"Return ONLY a JSON array of the top {RERANK_TOP_K} passage indices "
                 f"(0-based), like: [2, 0, 5]\n\n"
-                + "\n\n".join([f"[{i}] {c[:300]}" for i, c in enumerate(merged)])
+                + "\n\n".join([f"[{i}] {cr['text'][:300]}" for i, cr in enumerate(merged)])
             )
             resp    = ollama_client.chat(
                 model=RERANK_MODEL,
@@ -202,12 +235,17 @@ class HybridSearch:
             )
             raw     = resp.message.content.strip()
             indices = [int(x) for x in re.findall(r'\d+', raw) if int(x) < len(merged)][:RERANK_TOP_K]
-            final   = [merged[i] for i in indices] if indices else merged[:RERANK_TOP_K]
-            trace["step3_reranker"]["selected"] = len(final)
+            ranked  = [merged[i] for i in indices] if indices else merged[:RERANK_TOP_K]
+            trace["step3_reranker"]["selected"] = len(ranked)
         except Exception as e:
             log.warning("Reranker failed, using merged top-%d: %s", RERANK_TOP_K, e)
-            final = merged[:RERANK_TOP_K]
-            trace["step3_reranker"]["selected"] = len(final)
+            ranked = merged[:RERANK_TOP_K]
+            trace["step3_reranker"]["selected"] = len(ranked)
+
+        # Assign normalized rank scores: rank 0 → 1.0, last → lowest
+        n     = len(ranked)
+        final = [ChunkResult(**{**cr, "score": round(1.0 - rank / max(n, 1), 3)})
+                 for rank, cr in enumerate(ranked)]
 
         return final, trace
 
@@ -237,7 +275,7 @@ class LocalMemory:
         log.info("Stored %d chunks from '%s'", len(chunks), doc_id)
         return len(chunks)
 
-    def retrieve(self, query: str, ollama_client) -> tuple[list[str], dict]:
+    def retrieve(self, query: str, ollama_client) -> tuple[list[ChunkResult], dict]:
         return self.search.search(query, ollama_client)
 
     def count(self) -> int:
@@ -281,12 +319,21 @@ class GoogleConnector:
             creds = Credentials.from_authorized_user_file(str(TOKEN_FILE), GOOGLE_SCOPES)
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            else:
+                try:
+                    creds.refresh(Request())
+                except RefreshError as exc:
+                    if any(code in str(exc).lower() for code in ("invalid_grant", "token_revoked")):
+                        log.warning("Token refresh failed (%s) — deleting token and re-authenticating", exc)
+                        TOKEN_FILE.unlink(missing_ok=True)
+                        creds = None
+                    else:
+                        log.error("Token refresh failed with unexpected error: %s", exc)
+                        raise
+            if not creds or not creds.valid:
                 if not CREDENTIALS_FILE.exists():
                     raise FileNotFoundError(f"Missing {CREDENTIALS_FILE}. See setup guide Phase 1.")
                 flow  = InstalledAppFlow.from_client_secrets_file(str(CREDENTIALS_FILE), GOOGLE_SCOPES)
-                creds = flow.run_local_server(port=0)
+                creds = flow.run_local_server(port=0, timeout_seconds=300)
             TOKEN_FILE.write_text(creds.to_json())
         return creds
 
@@ -414,10 +461,12 @@ class ReasoningEngine:
         self.memory = memory
         self.client = ollama.Client(host=OLLAMA_HOST)
 
-    def ask(self, question: str, n_results: int = RERANK_TOP_K) -> tuple[str, int, dict]:
-        chunks, trace = self.memory.retrieve(question, self.client)
-        context       = "\n\n---\n\n".join(chunks) if chunks else "No context found."
-        prompt        = (
+    def ask(self, question: str, n_results: int = RERANK_TOP_K) -> tuple[str, int, dict, list[dict]]:
+        chunk_results, trace = self.memory.retrieve(question, self.client)
+        context = "\n\n---\n\n".join(cr["text"] for cr in chunk_results) if chunk_results else "No context found."
+        sources = [{"source": cr["source"], "score": cr["score"], "text": cr["text"][:300]}
+                   for cr in chunk_results]
+        prompt  = (
             "You are a helpful AI assistant. Answer using ONLY the context below. "
             "Format your response using Markdown — use headers, lists, and tables where appropriate. "
             "If the answer is not in the context, say so clearly.\n\n"
@@ -431,20 +480,22 @@ class ReasoningEngine:
         except Exception as e:
             log.error("Ollama RAG call failed: %s", e)
             raise HTTPException(status_code=503, detail="LLM unavailable. Ensure Ollama is running.")
-        return resp.message.content.strip(), len(chunks), trace
+        return resp.message.content.strip(), len(chunk_results), trace, sources
 
     async def ask_stream(self, question: str) -> AsyncIterator[str]:
         """Streaming version — yields SSE-formatted chunks."""
-        chunks, trace = self.memory.retrieve(question, self.client)
-        context       = "\n\n---\n\n".join(chunks) if chunks else "No context found."
-        prompt        = (
+        chunk_results, trace = self.memory.retrieve(question, self.client)
+        context = "\n\n---\n\n".join(cr["text"] for cr in chunk_results) if chunk_results else "No context found."
+        sources = [{"source": cr["source"], "score": cr["score"], "text": cr["text"][:300]}
+                   for cr in chunk_results]
+        prompt  = (
             "You are a helpful AI assistant. Answer using ONLY the context below. "
             "Use Markdown formatting — headers, lists, and tables where helpful. "
             "If the answer is not in the context, say so.\n\n"
             f"CONTEXT:\n{context}\n\nQUESTION: {question}\n\nANSWER:"
         )
-        # Yield trace first so UI can show thought-trace immediately
-        yield f"data: {json.dumps({'type': 'trace', 'trace': trace, 'chunks': len(chunks)})}\n\n"
+        # Yield trace + sources first so UI can render them immediately
+        yield f"data: {json.dumps({'type': 'trace', 'trace': trace, 'chunks': len(chunk_results), 'sources': sources})}\n\n"
 
         try:
             stream = self.client.chat(
@@ -600,9 +651,9 @@ async def status():
 async def ask(req: AskRequest):
     if not req.question.strip():
         raise HTTPException(status_code=400, detail="question cannot be empty")
-    answer, n, trace = agent.engine.ask(req.question, req.n_results)
+    answer, n, trace, sources = agent.engine.ask(req.question, req.n_results)
     return AskResponse(question=req.question, answer=answer,
-                       chunks_used=n, search_trace=trace)
+                       chunks_used=n, search_trace=trace, sources=sources)
 
 
 # ── RAG Ask (streaming SSE) ────────────────────────────────────────────────────

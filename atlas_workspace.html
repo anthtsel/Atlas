@@ -53,7 +53,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
 #clock{font-variant-numeric:tabular-nums;}
 
 /* ── Layout ── */
-.workspace{flex:1;display:grid;grid-template-columns:1fr 300px;grid-template-rows:1fr 200px;overflow:hidden;gap:1px;background:var(--border);}
+.chat-area{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0;}
 .panel{background:var(--bg);display:flex;flex-direction:column;overflow:hidden;}
 .panel-header{height:32px;min-height:32px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 14px;flex-shrink:0;}
 .panel-title{font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-dim);display:flex;align-items:center;gap:7px;}
@@ -64,7 +64,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
 .p-btn.active{background:var(--green-g);border-color:rgba(74,222,128,0.4);color:var(--green);}
 
 /* ── Chat ── */
-.chat-panel{grid-row:1;grid-column:1;}
 .chat-msgs{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:18px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
 
 .welcome{margin:auto;text-align:center;padding:32px;animation:fadeIn 0.7s ease;}
@@ -150,8 +149,13 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
 .send-btn:hover{background:rgba(74,222,128,0.15);}
 .send-btn:disabled{opacity:0.35;cursor:not-allowed;}
 
-/* ── Right panel ── */
-.right-panel{grid-row:1;grid-column:2;display:flex;flex-direction:column;}
+/* ── Sidebar drawer ── */
+.sidebar-drawer{position:fixed;top:46px;right:0;width:320px;height:calc(100vh - 46px);background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;transform:translateX(100%);transition:transform 0.25s ease;z-index:200;}
+.sidebar-drawer.open{transform:translateX(0);}
+.sidebar-header{height:32px;min-height:32px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 14px;flex-shrink:0;}
+.sidebar-title{font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-dim);}
+.topbar-btn{background:transparent;border:1px solid var(--border);color:var(--text-dim);font-family:var(--mono);font-size:13px;width:30px;height:26px;cursor:pointer;border-radius:2px;display:flex;align-items:center;justify-content:center;transition:all 0.15s;}
+.topbar-btn:hover,.topbar-btn.active{border-color:rgba(74,222,128,0.4);color:var(--green);}
 .tab-bar{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;}
 .tab{flex:1;height:32px;display:flex;align-items:center;justify-content:center;font-size:9px;letter-spacing:0.13em;text-transform:uppercase;color:var(--text-dim);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.15s;gap:4px;}
 .tab:hover{color:var(--text);}
@@ -202,9 +206,30 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
 .stat-val.amber{color:var(--amber);}
 .stat-val.dim{color:var(--text-dim);font-size:10px;}
 
-/* ── Bottom panels ── */
-.bottom-left{grid-row:2;grid-column:1;}
-.bottom-right{grid-row:2;grid-column:2;}
+/* ── Briefing modal ── */
+.briefing-modal{display:none;position:fixed;inset:0;z-index:300;align-items:center;justify-content:center;}
+.briefing-modal.open{display:flex;}
+.modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,0.6);}
+.modal-panel{position:relative;z-index:1;width:min(680px,92vw);max-height:80vh;background:var(--bg2);border:1px solid var(--border);border-radius:4px;display:flex;flex-direction:column;overflow:hidden;}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:40px;border-bottom:1px solid var(--border);flex-shrink:0;font-size:11px;color:var(--text-hi);letter-spacing:0.08em;}
+.modal-body{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+
+/* ── Log drawer ── */
+.log-drawer{position:fixed;bottom:0;left:0;right:0;height:220px;background:var(--bg2);border-top:1px solid var(--border);transform:translateY(100%);transition:transform 0.25s ease;z-index:200;display:flex;flex-direction:column;}
+.log-drawer.open{transform:translateY(0);}
+.log-drawer-header{height:32px;min-height:32px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-bottom:1px solid var(--border);flex-shrink:0;}
+
+/* ── Source cards ── */
+.source-cards{display:flex;flex-wrap:wrap;gap:6px;max-width:82%;margin-top:4px;}
+.source-card{background:var(--bg3);border:1px solid var(--border);border-radius:3px;overflow:hidden;min-width:160px;max-width:260px;flex:0 1 auto;}
+.source-card-header{display:flex;align-items:center;gap:6px;padding:5px 9px;cursor:pointer;user-select:none;}
+.source-card-header:hover{background:var(--bg4);}
+.source-card-num{color:var(--green);font-size:9px;font-weight:600;min-width:14px;}
+.source-card-name{font-size:10px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;}
+.source-card-score{font-size:9px;color:var(--text-dim);flex-shrink:0;}
+.source-card-body{max-height:0;overflow:hidden;transition:max-height 0.25s ease;}
+.source-card-body.open{max-height:140px;}
+.source-card-text{padding:6px 9px;font-size:10px;color:var(--text-dim);line-height:1.55;border-top:1px solid var(--border);overflow-y:auto;max-height:130px;white-space:pre-wrap;word-break:break-word;}
 
 /* Briefing panel */
 .briefing-content{flex:1;overflow-y:auto;padding:12px 16px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;font-family:var(--sans);font-size:12.5px;line-height:1.7;color:var(--text);}
@@ -263,18 +288,19 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
     </div>
   </div>
   <div class="topbar-right">
+    <button class="topbar-btn" id="sidebarToggle" onclick="toggleSidebar()" title="Tools">≡</button>
+    <button class="topbar-btn" id="briefingToggle" onclick="openBriefingModal()" title="Briefing">◈</button>
+    <button class="topbar-btn" id="logToggle" onclick="toggleLogDrawer()" title="Logs">≣</button>
     <span>chunks: <span class="doc-count" id="topDocs">—</span></span>
     <span id="clock">--:--:--</span>
   </div>
 </div>
 
-<!-- ══ WORKSPACE ══ -->
-<div class="workspace">
-
-  <!-- ── CHAT ── -->
-  <div class="panel chat-panel">
+<!-- ══ CHAT AREA ══ -->
+<div class="chat-area">
+  <div class="panel">
     <div class="panel-header">
-      <div class="panel-title"><span class="acc">01</span> Intelligence Query — Hybrid RAG</div>
+      <div class="panel-title"><span class="acc">◈</span> ATLAS — Hybrid RAG</div>
       <div class="panel-actions">
         <button class="p-btn" id="streamBtn" onclick="toggleStream()" title="Toggle streaming">stream: on</button>
         <button class="p-btn" onclick="clearChat()">clear</button>
@@ -284,7 +310,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
       <div class="welcome" id="welcomeMsg">
         <div class="welcome-glyph">A</div>
         <h2>What can I help you with?</h2>
-        <p>Hybrid RAG: BM25 + ChromaDB → Qwen3-Reranker. Streaming responses. Full Google Workspace integration.</p>
+        <p>Hybrid RAG: BM25 + ChromaDB → Reranker. Streaming responses with source citations.</p>
         <div class="hint-chips">
           <div class="hint" onclick="useHint(this)">What's on my calendar today?</div>
           <div class="hint" onclick="useHint(this)">Summarize my open tasks</div>
@@ -302,154 +328,167 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
       <button class="send-btn" id="sendBtn" onclick="sendMessage()">Send ↵</button>
     </div>
   </div>
-
-  <!-- ── RIGHT PANEL ── -->
-  <div class="panel right-panel">
-    <div class="tab-bar">
-      <div class="tab active" onclick="switchTab('tools',this)">⬡ Tools</div>
-      <div class="tab" onclick="switchTab('ingest',this)">↓ Ingest</div>
-      <div class="tab" onclick="switchTab('stats',this)">◈ Stats</div>
-    </div>
-
-    <!-- Tools tab -->
-    <div class="tab-content active" id="tab-tools">
-      <div class="tools-scroll">
-        <div class="tool-section-label">Calendar</div>
-        <div class="tool-card">
-          <div class="tool-card-header">
-            <div class="tool-card-name"><span class="icon">📅</span>Upcoming Events</div>
-            <button class="tool-btn" onclick="loadCalendar()">Fetch</button>
-          </div>
-          <div class="tool-result" id="calResult"></div>
-        </div>
-
-        <div class="tool-section-label">Tasks</div>
-        <div class="tool-card">
-          <div class="tool-card-header">
-            <div class="tool-card-name"><span class="icon">✅</span>Open Tasks</div>
-            <button class="tool-btn" onclick="loadTasks()">Fetch</button>
-          </div>
-          <div class="tool-result" id="tasksResult"></div>
-        </div>
-        <div class="tool-card">
-          <div class="tool-card-header">
-            <div class="tool-card-name"><span class="icon">➕</span>Create Task</div>
-          </div>
-          <div style="padding:0 10px 10px;display:flex;flex-direction:column;gap:6px;">
-            <input class="ingest-input" id="newTaskTitle" placeholder="Task title…" style="font-size:11px;">
-            <input class="ingest-input" id="newTaskNotes" placeholder="Notes (optional)…" style="font-size:11px;">
-            <button class="ingest-btn" onclick="createTask()" style="align-self:flex-start;">Create Task</button>
-          </div>
-        </div>
-
-        <div class="tool-section-label">Drive</div>
-        <div class="tool-card">
-          <div class="tool-card-header">
-            <div class="tool-card-name"><span class="icon">◈</span>Google Drive</div>
-            <button class="tool-btn" onclick="loadDrive()">List</button>
-          </div>
-          <div class="tool-result" id="driveResult"></div>
-        </div>
-
-        <div class="tool-section-label">Gmail</div>
-        <div class="tool-card">
-          <div class="tool-card-header">
-            <div class="tool-card-name"><span class="icon">✉</span>Recent Mail</div>
-            <button class="tool-btn" onclick="loadGmail()">Fetch</button>
-          </div>
-          <div class="tool-result" id="gmailResult"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Ingest tab -->
-    <div class="tab-content" id="tab-ingest">
-      <div class="ingest-scroll">
-        <div class="ingest-section">
-          <div class="ingest-label">Google Doc</div>
-          <div class="ingest-row">
-            <input class="ingest-input" id="gdocId" placeholder="Google Doc ID…">
-            <button class="ingest-btn" onclick="ingestDoc('gdoc')">Ingest</button>
-          </div>
-          <div class="ingest-hint">From URL: /document/d/<span style="color:rgba(74,222,128,0.5)">DOC_ID</span>/edit</div>
-        </div>
-        <div class="ingest-section">
-          <div class="ingest-label">Google Sheet</div>
-          <div class="ingest-row">
-            <input class="ingest-input" id="gsheetId" placeholder="Spreadsheet ID…">
-            <button class="ingest-btn" onclick="ingestDoc('gsheet')">Ingest</button>
-          </div>
-          <div class="ingest-hint">From URL: /spreadsheets/d/<span style="color:rgba(74,222,128,0.5)">SHEET_ID</span>/edit</div>
-        </div>
-        <div class="ingest-section">
-          <div class="ingest-label">YouTube Video</div>
-          <div class="ingest-row">
-            <input class="ingest-input" id="ytId" placeholder="Video ID (not full URL)…">
-            <button class="ingest-btn" onclick="ingestDoc('youtube')">Ingest</button>
-          </div>
-          <div class="ingest-hint">From URL: youtube.com/watch?v=<span style="color:rgba(74,222,128,0.5)">VIDEO_ID</span></div>
-        </div>
-        <div class="ingest-section">
-          <div class="ingest-label">Local Knowledge</div>
-          <button class="ingest-btn" style="width:100%" onclick="ingestLocal()">↺ Rescan knowledge/ folder</button>
-          <div class="ingest-hint">Drop .txt or .md files into ~/atlas_workspace/knowledge/ then rescan.</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Stats tab -->
-    <div class="tab-content" id="tab-stats">
-      <div class="stats-scroll">
-        <div class="stat-card">
-          <div class="stat-card-title">System</div>
-          <div class="stat-row"><span class="stat-key">status</span><span class="stat-val green" id="sStatus">—</span></div>
-          <div class="stat-row"><span class="stat-key">rag model</span><span class="stat-val green" id="sRag">—</span></div>
-          <div class="stat-row"><span class="stat-key">briefing model</span><span class="stat-val" id="sBriefing">—</span></div>
-          <div class="stat-row"><span class="stat-key">embed model</span><span class="stat-val dim" id="sEmbed">—</span></div>
-          <div class="stat-row"><span class="stat-key">reranker</span><span class="stat-val dim" id="sRerank">—</span></div>
-          <div class="stat-row"><span class="stat-key">collection</span><span class="stat-val dim" id="sCollection">—</span></div>
-          <div class="stat-row"><span class="stat-key">doc chunks</span><span class="stat-val green" id="sDocs">—</span></div>
-          <div class="stat-row"><span class="stat-key">google</span><span class="stat-val" id="sGoogle">—</span></div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-card-title">Session</div>
-          <div class="stat-row"><span class="stat-key">queries</span><span class="stat-val green" id="sesQ">0</span></div>
-          <div class="stat-row"><span class="stat-key">ingested</span><span class="stat-val" id="sesI">0</span></div>
-          <div class="stat-row"><span class="stat-key">avg chunks</span><span class="stat-val" id="sesC">—</span></div>
-          <div class="stat-row"><span class="stat-key">last latency</span><span class="stat-val" id="sesL">—</span></div>
-          <div class="stat-row"><span class="stat-key">api</span><span class="stat-val dim">localhost:8001</span></div>
-        </div>
-        <a href="http://localhost:8001/docs" target="_blank"
-           style="color:rgba(74,222,128,0.4);font-size:10px;text-decoration:none;padding:4px 0;">→ Swagger UI ↗</a>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── BRIEFING PANEL ── -->
-  <div class="panel bottom-left">
-    <div class="panel-header">
-      <div class="panel-title"><span class="acc">02</span> Morning Briefing — qwen2.5:14b</div>
-      <div class="panel-actions">
-        <button class="p-btn" id="briefingBtn" onclick="loadBriefing()">↺ Generate</button>
-      </div>
-    </div>
-    <div id="briefingArea" class="briefing-empty">
-      <span style="font-size:22px;opacity:0.15">◈</span>
-      <span>Click Generate for your AI morning briefing</span>
-      <span style="font-size:10px;color:var(--text-dim)">Calendar + Tasks + Project Notes → qwen2.5:14b synthesis</span>
-    </div>
-  </div>
-
-  <!-- ── LOG PANEL ── -->
-  <div class="panel bottom-right">
-    <div class="panel-header">
-      <div class="panel-title"><span class="acc">03</span> Activity Log</div>
-      <div class="panel-actions"><button class="p-btn" onclick="clearLog()">clear</button></div>
-    </div>
-    <div class="log-list" id="logList"></div>
-  </div>
-
 </div>
+
+<!-- ══ SIDEBAR DRAWER ══ -->
+<div class="sidebar-drawer" id="sidebarDrawer">
+  <div class="sidebar-header">
+    <span class="sidebar-title">Workspace Tools</span>
+    <button class="topbar-btn" onclick="toggleSidebar()">✕</button>
+  </div>
+  <div class="tab-bar">
+    <div class="tab active" onclick="switchTab('tools',this)">⬡ Tools</div>
+    <div class="tab" onclick="switchTab('ingest',this)">↓ Ingest</div>
+    <div class="tab" onclick="switchTab('stats',this)">◈ Stats</div>
+  </div>
+
+  <!-- Tools tab -->
+  <div class="tab-content active" id="tab-tools">
+    <div class="tools-scroll">
+      <div class="tool-section-label">Calendar</div>
+      <div class="tool-card">
+        <div class="tool-card-header">
+          <div class="tool-card-name"><span class="icon">📅</span>Upcoming Events</div>
+          <button class="tool-btn" onclick="loadCalendar()">Fetch</button>
+        </div>
+        <div class="tool-result" id="calResult"></div>
+      </div>
+
+      <div class="tool-section-label">Tasks</div>
+      <div class="tool-card">
+        <div class="tool-card-header">
+          <div class="tool-card-name"><span class="icon">✅</span>Open Tasks</div>
+          <button class="tool-btn" onclick="loadTasks()">Fetch</button>
+        </div>
+        <div class="tool-result" id="tasksResult"></div>
+      </div>
+      <div class="tool-card">
+        <div class="tool-card-header">
+          <div class="tool-card-name"><span class="icon">➕</span>Create Task</div>
+        </div>
+        <div style="padding:0 10px 10px;display:flex;flex-direction:column;gap:6px;">
+          <input class="ingest-input" id="newTaskTitle" placeholder="Task title…" style="font-size:11px;">
+          <input class="ingest-input" id="newTaskNotes" placeholder="Notes (optional)…" style="font-size:11px;">
+          <button class="ingest-btn" onclick="createTask()" style="align-self:flex-start;">Create Task</button>
+        </div>
+      </div>
+
+      <div class="tool-section-label">Drive</div>
+      <div class="tool-card">
+        <div class="tool-card-header">
+          <div class="tool-card-name"><span class="icon">◈</span>Google Drive</div>
+          <button class="tool-btn" onclick="loadDrive()">List</button>
+        </div>
+        <div class="tool-result" id="driveResult"></div>
+      </div>
+
+      <div class="tool-section-label">Gmail</div>
+      <div class="tool-card">
+        <div class="tool-card-header">
+          <div class="tool-card-name"><span class="icon">✉</span>Recent Mail</div>
+          <button class="tool-btn" onclick="loadGmail()">Fetch</button>
+        </div>
+        <div class="tool-result" id="gmailResult"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ingest tab -->
+  <div class="tab-content" id="tab-ingest">
+    <div class="ingest-scroll">
+      <div class="ingest-section">
+        <div class="ingest-label">Google Doc</div>
+        <div class="ingest-row">
+          <input class="ingest-input" id="gdocId" placeholder="Google Doc ID…">
+          <button class="ingest-btn" onclick="ingestDoc('gdoc')">Ingest</button>
+        </div>
+        <div class="ingest-hint">From URL: /document/d/<span style="color:rgba(74,222,128,0.5)">DOC_ID</span>/edit</div>
+      </div>
+      <div class="ingest-section">
+        <div class="ingest-label">Google Sheet</div>
+        <div class="ingest-row">
+          <input class="ingest-input" id="gsheetId" placeholder="Spreadsheet ID…">
+          <button class="ingest-btn" onclick="ingestDoc('gsheet')">Ingest</button>
+        </div>
+        <div class="ingest-hint">From URL: /spreadsheets/d/<span style="color:rgba(74,222,128,0.5)">SHEET_ID</span>/edit</div>
+      </div>
+      <div class="ingest-section">
+        <div class="ingest-label">YouTube Video</div>
+        <div class="ingest-row">
+          <input class="ingest-input" id="ytId" placeholder="Video ID (not full URL)…">
+          <button class="ingest-btn" onclick="ingestDoc('youtube')">Ingest</button>
+        </div>
+        <div class="ingest-hint">From URL: youtube.com/watch?v=<span style="color:rgba(74,222,128,0.5)">VIDEO_ID</span></div>
+      </div>
+      <div class="ingest-section">
+        <div class="ingest-label">Local Knowledge</div>
+        <button class="ingest-btn" style="width:100%" onclick="ingestLocal()">↺ Rescan knowledge/ folder</button>
+        <div class="ingest-hint">Drop .txt or .md files into ~/atlas_workspace/knowledge/ then rescan.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats tab -->
+  <div class="tab-content" id="tab-stats">
+    <div class="stats-scroll">
+      <div class="stat-card">
+        <div class="stat-card-title">System</div>
+        <div class="stat-row"><span class="stat-key">status</span><span class="stat-val green" id="sStatus">—</span></div>
+        <div class="stat-row"><span class="stat-key">rag model</span><span class="stat-val green" id="sRag">—</span></div>
+        <div class="stat-row"><span class="stat-key">briefing model</span><span class="stat-val" id="sBriefing">—</span></div>
+        <div class="stat-row"><span class="stat-key">embed model</span><span class="stat-val dim" id="sEmbed">—</span></div>
+        <div class="stat-row"><span class="stat-key">reranker</span><span class="stat-val dim" id="sRerank">—</span></div>
+        <div class="stat-row"><span class="stat-key">collection</span><span class="stat-val dim" id="sCollection">—</span></div>
+        <div class="stat-row"><span class="stat-key">doc chunks</span><span class="stat-val green" id="sDocs">—</span></div>
+        <div class="stat-row"><span class="stat-key">google</span><span class="stat-val" id="sGoogle">—</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-title">Session</div>
+        <div class="stat-row"><span class="stat-key">queries</span><span class="stat-val green" id="sesQ">0</span></div>
+        <div class="stat-row"><span class="stat-key">ingested</span><span class="stat-val" id="sesI">0</span></div>
+        <div class="stat-row"><span class="stat-key">avg chunks</span><span class="stat-val" id="sesC">—</span></div>
+        <div class="stat-row"><span class="stat-key">last latency</span><span class="stat-val" id="sesL">—</span></div>
+        <div class="stat-row"><span class="stat-key">api</span><span class="stat-val dim">localhost:8001</span></div>
+      </div>
+      <a href="http://localhost:8001/docs" target="_blank"
+         style="color:rgba(74,222,128,0.4);font-size:10px;text-decoration:none;padding:4px 0;">→ Swagger UI ↗</a>
+    </div>
+  </div>
+</div>
+
+<!-- ══ BRIEFING MODAL ══ -->
+<div class="briefing-modal" id="briefingModal">
+  <div class="modal-backdrop" onclick="closeBriefingModal()"></div>
+  <div class="modal-panel">
+    <div class="modal-header">
+      <span>Morning Briefing</span>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="briefing-btn" id="briefingBtn" onclick="loadBriefing()">↺ Generate</button>
+        <button class="topbar-btn" onclick="closeBriefingModal()">✕</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div id="briefingArea" class="briefing-empty">
+        <span style="font-size:22px;opacity:0.15">◈</span>
+        <span>Click Generate for your AI morning briefing</span>
+        <span style="font-size:10px;color:var(--text-dim)">Calendar + Tasks + Project Notes synthesis</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ LOG DRAWER ══ -->
+<div class="log-drawer" id="logDrawer">
+  <div class="log-drawer-header">
+    <span class="panel-title">Activity Log</span>
+    <div style="display:flex;gap:5px;align-items:center;">
+      <button class="p-btn" onclick="clearLog()">clear</button>
+      <button class="topbar-btn" onclick="toggleLogDrawer()">✕</button>
+    </div>
+  </div>
+  <div class="log-list" id="logList"></div>
+</div>
+
 <div class="notif-stack" id="notifStack"></div>
 
 <script>
@@ -545,6 +584,16 @@ function toggleStream(){
   btn.textContent='stream: '+(streaming?'on':'off');
   btn.className='p-btn'+(streaming?' active':'');
 }
+function toggleSidebar(){
+  const open=document.getElementById('sidebarDrawer').classList.toggle('open');
+  document.getElementById('sidebarToggle').classList.toggle('active',open);
+}
+function openBriefingModal(){ document.getElementById('briefingModal').classList.add('open'); }
+function closeBriefingModal(){ document.getElementById('briefingModal').classList.remove('open'); }
+function toggleLogDrawer(){
+  const open=document.getElementById('logDrawer').classList.toggle('open');
+  document.getElementById('logToggle').classList.toggle('active',open);
+}
 
 async function sendMessage() {
   const input    = document.getElementById('chatInput');
@@ -573,7 +622,7 @@ async function sendStandard(question, t0) {
     const data = await api('POST','/ask',{question, n_results:3});
     thinkEl.remove();
     const ms = Date.now()-t0;
-    addAgentMessage(data.answer, data.chunks_used, ms, data.search_trace);
+    addAgentMessage(data.answer, data.chunks_used, ms, data.search_trace, data.sources);
     session.q++; session.chunks+=data.chunks_used; session.lastMs=ms;
     updateSession();
     log(`Response in ${ms}ms — ${data.chunks_used} chunks`, 'ok');
@@ -603,14 +652,14 @@ async function sendStreaming(question, t0) {
   msgs.appendChild(wrapper);
   msgs.scrollTop=msgs.scrollHeight;
 
-  let fullText='', trace=null, chunks=0;
+  let fullText='', trace=null, chunks=0, sources=[];
   try {
     const es = new EventSource(`${API}/ask/stream?question=${encodeURIComponent(question)}`);
     await new Promise((resolve,reject) => {
       es.onmessage = (e) => {
         const d = JSON.parse(e.data);
         if (d.type==='trace') {
-          trace=d.trace; chunks=d.chunks;
+          trace=d.trace; chunks=d.chunks; sources=d.sources||[];
           thinkDiv.remove();
           wrapper.appendChild(bubble);
         } else if (d.type==='token') {
@@ -624,6 +673,8 @@ async function sendStreaming(question, t0) {
       es.onerror = (e) => { es.close(); reject(new Error('Stream error')); };
     });
     const ms=Date.now()-t0;
+    const cards=buildSourceCards(sources);
+    if (cards) wrapper.appendChild(cards);
     if (trace) appendTrace(wrapper, trace, chunks, ms);
     session.q++; session.chunks+=chunks; session.lastMs=ms;
     updateSession();
@@ -649,7 +700,7 @@ function addMessage(role, text) {
   msgs.scrollTop=msgs.scrollHeight;
 }
 
-function addAgentMessage(text, chunks, ms, trace) {
+function addAgentMessage(text, chunks, ms, trace, sources) {
   const msgs = document.getElementById('chatMsgs');
   const ts   = new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit'});
   const el   = document.createElement('div');
@@ -659,8 +710,32 @@ function addAgentMessage(text, chunks, ms, trace) {
     <div class="msg-bubble">${marked.parse(text)}</div>
     <div class="msg-meta"><span class="chunks">▪ ${chunks} chunk${chunks!==1?'s':''} retrieved</span><span>${ms}ms</span></div>`;
   msgs.appendChild(el);
+  const cards=buildSourceCards(sources);
+  if (cards) el.appendChild(cards);
   if (trace) appendTrace(el, trace, chunks, ms);
   msgs.scrollTop=msgs.scrollHeight;
+}
+
+function buildSourceCards(sources) {
+  if (!sources || !sources.length) return null;
+  const container=document.createElement('div');
+  container.className='source-cards';
+  sources.forEach((s,i)=>{
+    const name=s.source.replace(/^(gdoc|gsheet|youtube)_/,'');
+    const card=document.createElement('div');
+    card.className='source-card';
+    card.innerHTML=`
+      <div class="source-card-header" onclick="this.nextElementSibling.classList.toggle('open')">
+        <span class="source-card-num">[${i+1}]</span>
+        <span class="source-card-name" title="${esc(s.source)}">${esc(name)}</span>
+        <span class="source-card-score">${s.score.toFixed(2)}</span>
+      </div>
+      <div class="source-card-body">
+        <div class="source-card-text">${esc(s.text)}</div>
+      </div>`;
+    container.appendChild(card);
+  });
+  return container;
 }
 
 function appendTrace(parent, trace, chunks, ms) {
@@ -889,6 +964,7 @@ async function ingestLocal() {
 
 // ── Briefing ───────────────────────────────────────────────────────────────
 async function loadBriefing() {
+  openBriefingModal();
   const area = document.getElementById('briefingArea');
   const btn  = document.getElementById('briefingBtn');
   area.className='briefing-content';
