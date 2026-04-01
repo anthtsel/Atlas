@@ -8,10 +8,10 @@ An agentic AI assistant combining local LLM inference (Ollama), hybrid RAG searc
 - [Ollama](https://ollama.com) installed and running
 - Required models pulled:
   ```bash
-  ollama pull qwen2.5-coder:7b   # RAG model
-  ollama pull qwen2.5:14b        # Briefing model
+  ollama pull gemma3:4b  # RAG model
+  ollama pull gemma3:4b       # Briefing model
   ollama pull nomic-embed-text   # Embeddings
-  ollama pull qwen3-reranker     # Reranker
+  ollama pull gemma3:4b     # Reranker
   ```
 - *(Optional)* Google Cloud project with OAuth 2.0 credentials for Workspace integration
 
